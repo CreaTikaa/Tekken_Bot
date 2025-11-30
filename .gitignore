@@ -12,5 +12,4 @@ env.bak/
 venv.bak/
 .vscode/
 data/*.json
-videos/*.mp4
 videos/*/*.mp4
