@@ -1,4 +1,3 @@
-# data_fetcher.py
 import re
 import asyncio
 from typing import Tuple, List, Dict, Optional
@@ -67,34 +66,27 @@ def parse_ewgf_html(html: str) -> Tuple[Optional[str], List[Dict], Optional[str]
     main_char = None
     games = []
 
-    # 1. Extraction Rank (Image alt)
     rank_img = soup.find("img", alt=re.compile(r" rank icon$", re.I))
     if rank_img:
         rank = rank_img["alt"].replace(" rank icon", "").strip()
 
-    # 2. Extraction Main Char (Nouvelle méthode Regex robuste)
-    # On cherche le pattern "mainChar":{"Nom":... dans le script compressé
-    # Le HTML contient souvent des quotes échappées : \"mainChar\":{\"Feng\":
     try:
-        # Recherche pattern: \"mainChar\":{\"NomDuPerso\"
+        # Recherche pattern: \"mainChar\":{\"NomDuPerso\" vu que ça marchait pas autrement
         char_match = re.search(r'\\?"mainChar\\?":\s*\{\\?"([^"\\]+)', html)
         if char_match:
             main_char = char_match.group(1)
     except Exception as e:
         print(f"Error regex main_char: {e}")
 
-    # 3. Extraction Games (JSON complexe)
     script = soup.find("script", string=re.compile("playerStats"))
     if script and script.string:
         import json
-        # On essaie d'extraire le bloc JSON des stats
         m = re.search(r'playerStats\":({.+?})\}\]', script.string, re.DOTALL)
         if m:
             try:
                 data_str = m.group(1) + "}"
                 data = json.loads(data_str)
 
-                # Fallback main_char si regex a échoué mais json marche
                 if not main_char and data.get("mainChar"):
                     main_char = list(data["mainChar"].keys())[0]
 

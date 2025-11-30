@@ -68,21 +68,18 @@ class Player:
             return []
 
         # On trie les nouveaux jeux par ordre chronologique (du plus vieux au plus récent)
-        # pour simuler l'évolution des streaks
         truly_new_games.sort(key=lambda x: x['timestamp_unix'])
 
         for g in truly_new_games:
-            # 1. Mise à jour de l'historique global (insert en tête car self.games est décroissant)
             self.games.insert(0, g)
             
-            # 2. Détection King (seulement si récent < 30min)
+            # 2. Détection King 
             is_fresh = (datetime.now().timestamp() - g['timestamp_unix']) < 1800 
             char_played = g.get('my_char', '').lower() if g.get('my_char') else ""
             if is_fresh and 'king' in char_played:
                 events.append(("king_picked", g))
 
             # 3. Calcul dynamique des Streaks
-            # C'est ICI qu'on empêche les doublons : on regarde l'évolution pas à pas.
             if g['result'] == 'WIN':
                 self.current_lose_streak = 0
                 self.current_win_streak += 1
