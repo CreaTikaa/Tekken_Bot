@@ -11,7 +11,7 @@ import random
 from config import (
     DISCORD_TOKEN, ANNOUNCE_CHANNEL_ID, RANK_UP_CHANNEL_ID, 
     REPORT_CHANNEL_ID, TEST_CHANNEL_ID, STATUS_COMMAND_GUILD_IDS, 
-    REFRESH_INTERVAL, 
+    INTERVAL_ACTIVE, INTERVAL_IDLE, INTERVAL_SLEEP, ACTIVITY_THRESHOLD,
     VIDEOS_LOSE_3, VIDEOS_LOSE_5, VIDEOS_LOSE_8, VIDEOS_LOSE_10,
     VIDEOS_WIN_3, VIDEOS_WIN_5, VIDEOS_WIN_8, VIDEOS_WIN_10, 
     VIDEOS_RANK_UP, VIDEOS_KING_PICK, VIDEOS_DERANK, 
@@ -161,15 +161,46 @@ class TekkenBot(commands.Bot):
                         if data and report_ch: 
                             await self.send_daily_report(report_ch, data)
 
-                if now.weekday() == 6 and now.hour == 23 and now.minute >= 58:
+                if now.weekday() == 6 and now.hour == 23 and now.minute >= 55:
                     if any(p.last_weekly_report_date != today for p in self.pm.players.values()):
                         data = self.pm.generate_weekly_report(today)
                         if data and report_ch: 
                             await self.send_weekly_report(report_ch, data)
 
+                # --- 3. DYNAMIC REFRESH LOGIC ---
+                
+                # Check if anyone is "Active" (played a game recently)
+                is_active_mode = False
+                current_timestamp = datetime.now().timestamp()
+                
+                for p in self.pm.players.values():
+                    if p.games:
+                        # Get timestamp of the very last game played
+                        last_game_time = p.games[0]['timestamp_unix']
+                        # If the game happened within the Activity Threshold (20 mins)
+                        if (current_timestamp - last_game_time) < ACTIVITY_THRESHOLD:
+                            is_active_mode = True
+                            break # Found someone playing, no need to check others
+
+                # Determine how long to sleep
+                if is_active_mode:
+                    sleep_time = INTERVAL_ACTIVE  # 20 seconds
+                    print(f"Active mode. Refresh dans {sleep_time}s.")
+                else:
+                    # Check for Night Mode (2am to 10am Paris time)
+                    if 2 <= now.hour < 10:
+                        sleep_time = INTERVAL_SLEEP # 1 hour
+                        print(f"Night Mode. Refresh dans {sleep_time}s.")
+                    else:
+                        sleep_time = INTERVAL_IDLE  # 20 minutes
+                        print(f"Idle Mode. Refresh dans {sleep_time}s.")
+
+                await asyncio.sleep(sleep_time)
+
             except Exception as e:
                 print(f"Loop Error: {e}")
-            await asyncio.sleep(REFRESH_INTERVAL)
+                # In case of error, default to a safe 30 min wait
+                await asyncio.sleep(1800)
 
     # --- HELPERS ---
     def get_random_video(self, video_list):
@@ -233,7 +264,10 @@ class TekkenBot(commands.Bot):
                 file_path = self.get_random_video(VIDEOS_DERANK)
 
             if embed:
-                await channel.send(embed=embed)
+                # NEW LINE: We pass 'mention' into the content parameter
+                # This puts the ping OUTSIDE the embed to trigger the notification
+                await channel.send(content=mention, embed=embed)
+                
                 if file_path:
                     await asyncio.sleep(0.5)
                     await channel.send(file=discord.File(file_path))
