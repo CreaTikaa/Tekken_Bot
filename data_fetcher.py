@@ -152,8 +152,19 @@ async def fetch_both_profiles(session, wavu_url=None, ewgf_url=None):
     wavu_html = results[0] if isinstance(results[0], str) else None
     ewgf_html = results[1] if isinstance(results[1], str) else None
 
-    w_rating, w_games = parse_wavu_html(wavu_html) if wavu_html else (None, [])
-    e_rank, e_games, main_char = parse_ewgf_html(ewgf_html) if ewgf_html else (None, [], None)
+    # On utilise asyncio.to_thread pour ne pas bloquer le bot pendant le parsing
+    if wavu_html:
+        w_rating, w_games = await asyncio.to_thread(parse_wavu_html, wavu_html)
+    else:
+        w_rating, w_games = (None, [])
+
+    if ewgf_html:
+        e_rank, e_games, main_char = await asyncio.to_thread(parse_ewgf_html, ewgf_html)
+    else:
+        e_rank, e_games, main_char = (None, [], None)
+
+    #w_rating, w_games = parse_wavu_html(wavu_html) if wavu_html else (None, [])
+    #e_rank, e_games, main_char = parse_ewgf_html(ewgf_html) if ewgf_html else (None, [], None)
 
     merged = {}
     all_games = e_games + w_games 

@@ -15,7 +15,10 @@ from config import (
     VIDEOS_LOSE_3, VIDEOS_LOSE_5, VIDEOS_LOSE_8, VIDEOS_LOSE_10,
     VIDEOS_WIN_3, VIDEOS_WIN_5, VIDEOS_WIN_8, VIDEOS_WIN_10, 
     VIDEOS_RANK_UP, VIDEOS_KING_PICK, VIDEOS_DERANK, 
-    PLAYERS, DISCORD_IDS
+    PLAYERS, DISCORD_IDS,
+    MESSAGES_LOSE_3, MESSAGES_LOSE_5, MESSAGES_LOSE_8, MESSAGES_LOSE_10,
+    MESSAGES_WIN_3, MESSAGES_WIN_5, MESSAGES_WIN_8, MESSAGES_WIN_10,
+    MESSAGES_RANK_UP, MESSAGES_DERANK, MESSAGES_KING
 )
 from player_manager import PlayerManager
 
@@ -188,7 +191,7 @@ class TekkenBot(commands.Bot):
                     print(f"Active mode. Refresh dans {sleep_time}s.")
                 else:
                     # Check for Night Mode (2am to 10am Paris time)
-                    if 2 <= now.hour < 10:
+                    if 3 <= now.hour < 10:
                         sleep_time = INTERVAL_SLEEP # 1 hour
                         print(f"Night Mode. Refresh dans {sleep_time}s.")
                     else:
@@ -210,7 +213,12 @@ class TekkenBot(commands.Bot):
 
     async def handle_event(self, channel, p_name, event):
         if not channel: return
-        mention = f"<@{DISCORD_IDS.get(p_name)}>" if p_name in DISCORD_IDS else f"**{p_name}**"
+        # On prépare la mention pour l'affichage dans le texte
+        mention_txt = f"<@{DISCORD_IDS.get(p_name)}>" if p_name in DISCORD_IDS else f"**{p_name}**"
+        
+        # Pour le message 'content' qui ping (hors embed)
+        ping_content = mention_txt 
+
         evt = event[0]
         
         # Redirection test
@@ -222,51 +230,64 @@ class TekkenBot(commands.Bot):
         try:
             embed, file_path = None, None
 
+            # Helper pour choisir un message et formater la mention/rank
+            def get_msg(msg_list, extra_data=None):
+                if not msg_list: return "Pas de message configuré."
+                txt = random.choice(msg_list)
+                # On remplace {mention} par le tag discord
+                txt = txt.replace("{mention}", mention_txt)
+                # Si on a un rang (pour rank up/down), on le remplace
+                if extra_data:
+                    txt = txt.replace("{rank}", str(extra_data))
+                return txt
+
             if evt == "king_picked":
-                embed = discord.Embed(title="🐆 KING DETECTED 🐆", description=f"{mention} à pick KING !", color=discord.Color.orange())
+                embed = discord.Embed(title="🐆 KING DETECTED 🐆", description=get_msg(MESSAGES_KING), color=discord.Color.orange())
                 file_path = self.get_random_video(VIDEOS_KING_PICK)
             
             # --- LOSE STREAKS ---
             elif evt == "lose_streak_3":
-                embed = discord.Embed(title="💀 Lose Streak 💀", description=f"{mention} enchaîne 3 défaites... c'est un peu une merde...", color=0x8B0000)
+                embed = discord.Embed(title="💀 Lose Streak 💀", description=get_msg(MESSAGES_LOSE_3), color=0x8B0000)
                 file_path = self.get_random_video(VIDEOS_LOSE_3)
             elif evt == "lose_streak_5":
-                embed = discord.Embed(title="⚰️ Lose Streak ⚰️", description=f"{mention} 5 défaites... Il est vraiment intankable...", color=0x000000)
+                embed = discord.Embed(title="⚰️ Lose Streak ⚰️", description=get_msg(MESSAGES_LOSE_5), color=0x000000)
                 file_path = self.get_random_video(VIDEOS_LOSE_5)
             elif evt == "lose_streak_8":
-                embed = discord.Embed(title="🏴‍☠️ DISASTER 🏴‍☠️", description=f"{mention} sombre totalement... 8 défaites. Il faut absolument consulter un médecin", color=0x000000)
+                embed = discord.Embed(title="🏴‍☠️ DISASTER 🏴‍☠️", description=get_msg(MESSAGES_LOSE_8), color=0x000000)
                 file_path = self.get_random_video(VIDEOS_LOSE_8)
             elif evt == "lose_streak_10":
-                embed = discord.Embed(title="🏳️ ABANDONNE 🏳️", description=f"{mention} est à 10 défaites. https://www.suicide-ecoute.fr/", color=0x000000)
+                embed = discord.Embed(title="🏳️ ABANDONNE 🏳️", description=get_msg(MESSAGES_LOSE_10), color=0x000000)
                 file_path = self.get_random_video(VIDEOS_LOSE_10)
 
             # --- WIN STREAKS ---
             elif evt == "win_streak_3":
-                embed = discord.Embed(title="🔥 Win Streak 🔥", description=f"{mention} enchaîne 3 victoires ! Belle bite", color=discord.Color.gold())
+                embed = discord.Embed(title="🔥 Win Streak 🔥", description=get_msg(MESSAGES_WIN_3), color=discord.Color.gold())
                 file_path = self.get_random_video(VIDEOS_WIN_3)
             elif evt == "win_streak_5":
-                embed = discord.Embed(title="🚀 MEGA TEUB 🚀 ", description=f"{mention} enchâine 5 victoires ! Le pénis est vraiment excessivement large !", color=discord.Color.teal())
+                embed = discord.Embed(title="🚀 MEGA TEUB 🚀 ", description=get_msg(MESSAGES_WIN_5), color=discord.Color.teal())
                 file_path = self.get_random_video(VIDEOS_WIN_5)
             elif evt == "win_streak_8":
-                embed = discord.Embed(title="🌟 GOAT 🌟", description=f"{mention} est le GOAT ! 8 victoires ! Il a très bien regardé la vidéo de Review", color=discord.Color.purple())
+                embed = discord.Embed(title="🌟 GOAT 🌟", description=get_msg(MESSAGES_WIN_8), color=discord.Color.purple())
                 file_path = self.get_random_video(VIDEOS_WIN_8)
             elif evt == "win_streak_10":
-                embed = discord.Embed(title="👑 IMMORTAL 👑", description=f"{mention} FUME LA GRAND MERE A ARSLAN ASH ! 10 VICTOIRES !", color=discord.Color.magenta())
+                embed = discord.Embed(title="👑 IMMORTAL 👑", description=get_msg(MESSAGES_WIN_10), color=discord.Color.magenta())
                 file_path = self.get_random_video(VIDEOS_WIN_10)
 
+            # --- RANKS ---
             elif evt == "rank_up":
-                embed = discord.Embed(title="🎉 RANK UP 🎉 ", description=f"{mention} est passé **{event[2]}** En route pour devenir le goat ? ", color=discord.Color.green())
+                # event[2] contient le nouveau rang
+                embed = discord.Embed(title="🎉 RANK UP 🎉 ", description=get_msg(MESSAGES_RANK_UP, event[2]), color=discord.Color.green())
                 embed.set_thumbnail(url=f"https://www.ewgf.gg/static/rank-icons/{event[2].replace(' ', '')}T8.webp")
                 file_path = self.get_random_video(VIDEOS_RANK_UP)
 
             elif evt == "derank":
-                embed = discord.Embed(title="📉 DERANK 📉 ", description=f"{mention} est retombé **{event[2]}** ! Faut réviser les combos frérot...", color=discord.Color.red())
+                # event[2] contient le nouveau rang (le plus bas)
+                embed = discord.Embed(title="📉 DERANK 📉 ", description=get_msg(MESSAGES_DERANK, event[2]), color=discord.Color.red())
                 file_path = self.get_random_video(VIDEOS_DERANK)
 
             if embed:
-                # NEW LINE: We pass 'mention' into the content parameter
-                # This puts the ping OUTSIDE the embed to trigger the notification
-                await channel.send(content=mention, embed=embed)
+                # On envoie le ping en 'content' et l'embed
+                await channel.send(content=ping_content, embed=embed)
                 
                 if file_path:
                     await asyncio.sleep(0.5)
@@ -288,15 +309,16 @@ class TekkenBot(commands.Bot):
 
         txt = ""
         for r in data['stats']:
-            icon = "🔥" if r['winrate'] >= 60 else "✅" if r['winrate'] >= 50 else "⚠️"
-            txt += f"{icon} **{r['name']}** • {r['rank']}\n> {r['wins']}W - {r['losses']}L ({r['winrate']}%)\n\n"
+            total_games = r['wins'] + r['losses']
+            icon = "⚡" if r['winrate'] >= 55 else "✔" if r['winrate'] >= 50 else "🗿"
+            txt += f"{icon} **{r['name']}** • {r['rank']}\n> {r['wins']}W - {r['losses']}L | **{total_games} Games** ({r['winrate']}%)\n\n"
         
         if txt: embed.add_field(name="📊 Stats", value=txt, inline=False)
         
         aw = data['awards']
         aw_l = []
-        if aw['goat']: aw_l.append(f"\n 🐐 **GOAT** 🐐 : {aw['goat'][0]} ({aw['goat'][1]} wins)")
-        if aw['fraude']: aw_l.append(f"🤡 **FRAUDE** 🤡 : {aw['fraude'][0]} ({aw['fraude'][1]} looses)")
+        if aw['goat']: aw_l.append(f"\n 🗿 **GOAT** 🗿 : {aw['goat'][0]} ({aw['goat'][1]} wins)")
+        if aw['fraude']: aw_l.append(f"🐐 **FRAUDE** 🐐 : {aw['fraude'][0]} ({aw['fraude'][1]} looses)")
         
         if aw_l: embed.add_field(name=" \n 🏆 Awards", value="\n \n".join(aw_l), inline=False)
         await channel.send(embed=embed, files=files)
@@ -312,15 +334,16 @@ class TekkenBot(commands.Bot):
             embed.set_image(url="attachment://spacer.png")
 
         for r in data['stats']:
+            total_games = r['wins'] + r['losses']
             icon = " ⬩➤ " if r['start_rank'] != r['end_rank'] else "➜"
-            val = f"Rank: {r['start_rank']} {icon} **{r['end_rank']}**\nStats: **{r['wins']}W** - {r['losses']}L ({r['winrate']}%) \n"
-            embed.add_field(name=f"👤 {r['name']}", value=val, inline=False)
+            val = f"Rank: {r['start_rank']} {icon} **{r['end_rank']}**\nStats: **{r['wins']}W** - {r['losses']}L | **{total_games} Games** ({r['winrate']}%) \n"
+            embed.add_field(name=f"🕹️  {r['name']}", value=val, inline=False)
             
         aw = data['awards']
         stxt = ""
-        if aw['locked_in'] and aw['locked_in']['name']: stxt += f"🔒 **LOCKED IN** 🔒 : {aw['locked_in']['name']}\n"
-        if aw['unlucky'] and aw['unlucky']['name']: stxt += f"💔 **UNLUCKY** 💔 : {aw['unlucky']['name']}\n"
-        if aw['chomeur'] and aw['chomeur']['name']: stxt += f"🛌 **CHÔMEUR** 🛌 : {aw['chomeur']['name']}\n"
+        if aw['locked_in'] and aw['locked_in']['name']: stxt += f"🔒 **Locked in** 🔒 : {aw['locked_in']['name']}\n"
+        if aw['unlucky'] and aw['unlucky']['name']: stxt += f"💔 **Unlucky** 💔 : {aw['unlucky']['name']}\n"
+        if aw['chomeur'] and aw['chomeur']['name']: stxt += f"🛌 **Le chômeur** 🛌 : {aw['chomeur']['name']}\n"
         
         if stxt: embed.add_field(name="\n ✨ Awards", value=stxt, inline=False)
         await channel.send(embed=embed, files=files)
