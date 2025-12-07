@@ -43,35 +43,35 @@ The bot scrapes data from Wavu Wiki and EWGF every few minutes to keep stats fre
 ## Live Event Alerts
 The bot sends immediate notifications to a dedicated channel when specific events occur:
 
-- Win Streaks: Alerts when a player hits 3, 5, 8, or 10 wins in a row.
-- Lose Streaks: Shame alerts when a player hits 3, 5, 8, or 10 losses in a row.
-- Rank Updates: Beautiful embeds showing Promotion (Rank Up) or Demotion (Derank).
-- King Detection: A funny, specific alert when a player shamelessly picks "King".
+- Win Streaks: Alerts when a player hits 3, 5, 8, or 10 wins in a row.  
+- Lose Streaks: Shame alerts when a player hits 3, 5, 8, or 10 losses in a row.  
+- Rank Updates: Beautiful embeds showing Promotion (Rank Up) or Demotion (Derank).  
+- King Detection: A funny, specific alert when a player shamelessly picks "King".  
 
 ## Automated Reports : 
 
 Daily Report (23:55): Summarizes the day's performance (Wins/Losses/Winrate) and awards titles like 🐐 LE GOAT and 🤡 LA FRAUDE.
 Weekly Report (Sunday): A comprehensive weekly recap showing rank evolution and special awards:
 
-- Locked In: Most wins against higher-ranked opponents.
-- Unlucky: Most close defeats (2-3 scores).
-- Le Chômeur: The player with the highest game count.
-- GOAT : Player with the highest win rate
-- FRAUDE : Player with the lowest win rate
+- Locked In: Most wins against higher-ranked opponents.  
+- Unlucky: Most close defeats (2-3 scores).  
+- Le Chômeur: The player with the highest game count.  
+- GOAT : Player with the highest win rate  
+- FRAUDE : Player with the lowest win rate  
 
 ## Visuals & Media
 
-Dynamic Video Responses: Plays different random video memes based on the event (Winning vs Losing).
-Clean Embeds: Uses advanced formatting (spacers, thumbnails) to look great on Desktop and Mobile.
+Dynamic Video Responses: Plays different random video memes based on the event (Winning vs Losing).  
+Clean Embeds: Uses advanced formatting (spacers, thumbnails) to look great on Desktop and Mobile.  
 
 ## How It Works (Architecture)
 
-The Loop (main.py & discord_bot.py): The bot runs an asynchronous background loop defined by REFRESH_INTERVAL.
-Data Fetching (data_fetcher.py): It performs parallel asynchronous requests (aiohttp) to scrape player profiles. It uses BeautifulSoup and Regex to extract hidden JSON data from web pages, retrieving match history and opponent ranks.
-Data Processing (player.py): New matches are compared against the seen_game_ids set to avoid duplicates.
-Streak Logic: The bot calculates streaks dynamically based only on the newly added games to prevent spamming notifications for old streaks.
-Snapshotting: It saves daily and weekly snapshots to calculate progress over time.
-State Management (player_manager.py): Handles the cache.json. It includes a Smart Cleaning feature that purges old match history every week to keep the database lightweight (<1MB) while preserving rank data.
+The Loop (main.py & discord_bot.py): The bot runs an asynchronous background loop defined by REFRESH_INTERVAL.  
+Data Fetching (data_fetcher.py): It performs parallel asynchronous requests (aiohttp) to scrape player profiles. It uses BeautifulSoup and Regex to extract hidden JSON data from web pages, retrieving match history and opponent ranks.  
+Data Processing (player.py): New matches are compared against the seen_game_ids set to avoid duplicates.  
+Streak Logic: The bot calculates streaks dynamically based only on the newly added games to prevent spamming notifications for old streaks.  
+Snapshotting: It saves daily and weekly snapshots to calculate progress over time.  
+State Management (player_manager.py): Handles the cache.json. It includes a Smart Cleaning feature that purges old match history every week to keep the database lightweight (<1MB) while preserving rank data.  
 
 ## Installation & Setup
 
