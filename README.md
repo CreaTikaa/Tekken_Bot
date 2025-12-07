@@ -6,7 +6,7 @@
 ![Discord.py](https://img.shields.io/badge/Discord.py-2.0+-blurple.svg)
 ![Tekken 8](https://img.shields.io/badge/Game-Tekken%208-red.svg)
 
-> ⚠️ DISCLAIMER ⚠️ : This was completely "vibe-coded" as we say, with some (a lot) IA included. I'm still learning, and since both site didn't have an API with what i wanted, i had to generate some code mostly for the parsing and fetching data. Use at your own risks :p
+> ⚠️ DISCLAIMER ⚠️ : This was completely "vibe-coded" as we say, with some (a lot) IA included. I'm still learning, and since both site didn't have an API with what i wanted, i had to generate some code because i'm not gonna parse html by hand, i'm too lazy for that. Use at your own risks :p
 
 ## Project Structure
 
