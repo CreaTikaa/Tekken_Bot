@@ -56,6 +56,8 @@ Weekly Report (Sunday): A comprehensive weekly recap showing rank evolution and 
 - Locked In: Most wins against higher-ranked opponents.
 - Unlucky: Most close defeats (2-3 scores).
 - Le Chômeur: The player with the highest game count.
+- GOAT : Player with the highest win rate
+- FRAUDE : Player with the lowest win rate
 
 ## Visuals & Media
 
@@ -104,8 +106,10 @@ python main.py
 
 | Syntax | Description |
 | ----------- | ----------- |
-| /tekken_status [player] | Displays a detailed stat card for a specific player (Rank, Rating, Last 5 games).|
+| /tekken_status [player] | Displays a detailed stat card for a specific player (Rank, Rating, Winrate, Last 5 games).|
+| /tekken_stats [player] | Displays a much more detailed stats card for a player (Rank, Rating, Winrate, Mental & Clutch Factor, Prime Time, Most faced characters, Matchups...) |
 | /test_events | **Admin Only.** Simulates a full suite of events (Streaks, Rank up, Reports) to the test channel to verify videos and embeds. |
+
 
 ## Contributing
 
