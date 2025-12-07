@@ -22,25 +22,46 @@ class Player:
 
         self.games: List[Dict] = []
         self.seen_game_ids: set = set()
+        
+        self.matchups: Dict = {}
+        self.pentagon_stats: Dict = {}
 
-        # On stocke les streaks actuels
         self.current_lose_streak: int = 0
         self.current_win_streak: int = 0
         
-        # Reports
         self.last_daily_report_date: Optional[str] = None
+        
+        # --- AJOUT ICI ---
+        self.daily_snapshot: Dict = {}   # Snapshot du matin
         self.weekly_snapshot: Dict = {}
         self.last_weekly_report_date: Optional[str] = None
 
-    def update_stats(self, rank: str, rating: float, main_char: str):
-        if rank and rank in self.RANK_TIERS_ORDER:
-            self.last_ewgf_rank = self.ewgf_rank
-            self.ewgf_rank = rank
+    def update_stats(self, rank: str, rating: float, main_char: str, matchups: Dict, pentagon: Dict):
+        # 1. Gestion du Daily Snapshot (Le rang du matin)
+        today = datetime.now().strftime("%Y-%m-%d")
         
-        self.rating_mu = rating
-        if main_char:
-            self.main_char = main_char
+        # Si on n'a pas de snapshot OU que le snapshot date d'hier (ou avant)
+        # On enregistre le rang ACTUEL comme étant le rang de départ de ce nouveau jour
+        if rank and (not self.daily_snapshot or self.daily_snapshot.get('date') != today):
+            self.daily_snapshot = {
+                "date": today,
+                "rank": rank # On fige le rang du matin
+            }
+
+        # 2. Update Rank actuel
+        if rank and rank in self.RANK_TIERS_ORDER:
+            if self.ewgf_rank != rank:
+                self.last_ewgf_rank = self.ewgf_rank
+                self.ewgf_rank = rank
+        
+        if rating: self.rating_mu = rating
+        if main_char: self.main_char = main_char
+        
+        # Update New Stats
+        if matchups: self.matchups = matchups
+        if pentagon: self.pentagon_stats = pentagon
             
+        # Weekly Snapshot
         if not self.weekly_snapshot and self.ewgf_rank:
             self.weekly_snapshot = {
                 "date": datetime.now().strftime("%Y-%m-%d"),
@@ -48,76 +69,94 @@ class Player:
             }
 
     def add_games(self, new_games: List[dict]) -> List[tuple]:
-        """
-        Ajoute les nouveaux jeux et retourne les événements déclenchés.
-        new_games arrive souvent du plus récent au plus ancien.
-        On doit les traiter du plus ancien au plus récent pour calculer les streaks correctement.
-        """
         events = []
-        
-        # On filtre ceux qu'on a déjà vus
         truly_new_games = []
+        
+        # Le nom de l'adversaire est déjà nettoyé dans data_fetcher pour la clé, 
+        # mais on recrée l'ID ici de la même façon pour le set seen_game_ids
+        import re
         for g in new_games:
-            uid = f"{g['timestamp_unix']}_{g['opponent']}_{g['score']}"
+            opp_clean = re.sub(r'\W+', '', g['opponent']).lower()
+            uid = f"{g['timestamp_unix']}_{opp_clean}_{g['score']}"
+            
             if uid not in self.seen_game_ids:
                 self.seen_game_ids.add(uid)
                 truly_new_games.append(g)
 
-        # S'il n'y a rien de neuf, on arrête tout de suite (pas de doublons possibles)
-        if not truly_new_games:
-            return []
+        if not truly_new_games: return []
 
-        # On trie les nouveaux jeux par ordre chronologique (du plus vieux au plus récent)
         truly_new_games.sort(key=lambda x: x['timestamp_unix'])
+        
+        now_ts = datetime.now().timestamp()
+        NOTIFICATION_THRESHOLD = 1800 # 30 minutes
 
         for g in truly_new_games:
             self.games.insert(0, g)
             
-            # 2. Détection King 
-            is_fresh = (datetime.now().timestamp() - g['timestamp_unix']) < 1800 
+            # --- FILTRE DE FRAICHEUR ---
+            # Si le match date de plus de 30 min, on ne notifie PAS (on update juste stats/streak interne)
+            is_fresh = (now_ts - g['timestamp_unix']) < NOTIFICATION_THRESHOLD
+            
+            # Logic King
             char_played = g.get('my_char', '').lower() if g.get('my_char') else ""
             if is_fresh and 'king' in char_played:
                 events.append(("king_picked", g))
 
-            # 3. Calcul dynamique des Streaks
+            # Logic Streaks
             if g['result'] == 'WIN':
                 self.current_lose_streak = 0
                 self.current_win_streak += 1
                 
-                # Check triggers Win
-                if self.current_win_streak == 3: events.append(("win_streak_3", 3))
-                elif self.current_win_streak == 5: events.append(("win_streak_5", 5))
-                elif self.current_win_streak == 8: events.append(("win_streak_8", 8))   # NOUVEAU
-                elif self.current_win_streak == 10: events.append(("win_streak_10", 10)) # NOUVEAU
+                if is_fresh:
+                    if self.current_win_streak == 3: events.append(("win_streak_3", 3))
+                    elif self.current_win_streak == 5: events.append(("win_streak_5", 5))
+                    elif self.current_win_streak == 8: events.append(("win_streak_8", 8))
+                    elif self.current_win_streak == 10: events.append(("win_streak_10", 10))
 
             elif g['result'] == 'LOSS':
                 self.current_win_streak = 0
                 self.current_lose_streak += 1
                 
-                # Check triggers Lose
-                if self.current_lose_streak == 3: events.append(("lose_streak_3", 3))
-                elif self.current_lose_streak == 5: events.append(("lose_streak_5", 5))
-                elif self.current_lose_streak == 8: events.append(("lose_streak_8", 8))   # NOUVEAU
-                elif self.current_lose_streak == 10: events.append(("lose_streak_10", 10)) # NOUVEAU
+                if is_fresh:
+                    if self.current_lose_streak == 3: events.append(("lose_streak_3", 3))
+                    elif self.current_lose_streak == 5: events.append(("lose_streak_5", 5))
+                    elif self.current_lose_streak == 8: events.append(("lose_streak_8", 8))
+                    elif self.current_lose_streak == 10: events.append(("lose_streak_10", 10))
 
-        # On garde l'historique propre (trié décroissant pour l'affichage status)
         self.games.sort(key=lambda x: x['timestamp_unix'], reverse=True)
-        self.games = self.games[:500]
+        self.games = self.games[:1500]
         
         return events
 
     def detect_rank_events(self) -> List[tuple]:
-        # Séparé des streaks car le rank n'est pas lié à un match précis dans l'API wavu/ewgf
         events = []
-        if (self.last_ewgf_rank and self.ewgf_rank and self.last_ewgf_rank != self.ewgf_rank):
-            try:
-                old_i = self.RANK_TIERS_ORDER.index(self.last_ewgf_rank)
-                new_i = self.RANK_TIERS_ORDER.index(self.ewgf_rank)
-                if new_i > old_i:
-                    events.append(("rank_up", self.last_ewgf_rank, self.ewgf_rank))
-                elif new_i < old_i:
-                    events.append(("derank", self.last_ewgf_rank, self.ewgf_rank))
-            except ValueError: pass
+        
+        # Sécurité : Si l'un des rangs est manquant, on ne fait rien
+        if not self.last_ewgf_rank or not self.ewgf_rank:
+            return events
+
+        # Si le rang est identique à la dernière fois, on arrête tout de suite
+        if self.last_ewgf_rank == self.ewgf_rank:
+            return events
+
+        try:
+            old_i = self.RANK_TIERS_ORDER.index(self.last_ewgf_rank)
+            new_i = self.RANK_TIERS_ORDER.index(self.ewgf_rank)
+            
+            # Détection
+            if new_i > old_i:
+                events.append(("rank_up", self.last_ewgf_rank, self.ewgf_rank))
+            elif new_i < old_i:
+                events.append(("derank", self.last_ewgf_rank, self.ewgf_rank))
+            
+            # CRUCIAL : On met à jour last_ewgf_rank ICI pour dire "C'est bon, j'ai vu le changement"
+            # Cela empêche de redéclencher l'event à la prochaine boucle
+            self.last_ewgf_rank = self.ewgf_rank
+            
+        except ValueError:
+            # Si un rang n'est pas dans la liste (ex: un nouveau rang ajouté par le jeu), on ignore
+            pass
+            
         return events
     
     def get_rank_index(self, rank_name):
@@ -134,4 +173,6 @@ class Player:
         p = cls(d["name"])
         p.__dict__.update(d)
         p.seen_game_ids = set(d.get("seen_game_ids", []))
+        # Récupération du snapshot s'il existe dans le cache
+        p.daily_snapshot = d.get("daily_snapshot", {}) 
         return p
